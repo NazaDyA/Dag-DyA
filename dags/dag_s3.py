@@ -1,33 +1,18 @@
+from datetime import datetime
+
 from airflow import DAG
-from airflow.operators import SimpleHttpOperator, HttpSensor,   BashOperator, EmailOperator, S3KeySensor
-from datetime import datetime, timedelta
+from airflow.decorators import task
+from airflow.operators.bash import BashOperator
 
-default_args = {
-    'owner': 'airflow',
-    'depends_on_past': False,
-    'start_date': datetime(2016, 11, 1),
-    'email': ['something@here.com'],
-    'email_on_failure': False,
-    'email_on_retry': False,
-    'retries': 5,
-    'retry_delay': timedelta(minutes=5)
-}
+# A DAG represents a workflow, a collection of tasks
+with DAG(dag_id="demo", start_date=datetime(2022, 1, 1), schedule="0 0 * * *") as dag:
 
-dag = DAG('s3_dag_test', default_args=default_args, schedule_interval= '@once')
+    # Tasks are represented as operators
+    hello = BashOperator(task_id="hello", bash_command="echo hello")
 
-t1 = BashOperator(
-    task_id='bash_test',
-    bash_command='echo "hello, it should work" > s3_conn_test.txt',
-    dag=dag)
+    @task()
+    def airflow():
+        print("airflow")
 
-sensor = S3KeySensor(
-    task_id='check_s3_for_file_in_s3',
-    bucket_key='file-to-watch-*',
-    wildcard_match=True,
-    bucket_name='S3-Bucket-To-Watch',
-    s3_conn_id='my_conn_S3',
-    timeout=18*60*60,
-    poke_interval=120,
-    dag=dag)
-
-t1.set_upstream(sensor)
+    # Set dependencies between tasks
+    hello >> airflow()
